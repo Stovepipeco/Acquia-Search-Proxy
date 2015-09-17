@@ -20,7 +20,6 @@
  *    PATH_INFO="/admin/ping" php search-proxy.php
  *    PATH_INFO="/admin/luke" QUERY_STRING="show=schema" php search-proxy.php
  *    PATH_INFO="/select" QUERY_STRING="q=foo" php search-proxy.php
- *
  */
 
 // Development defines
@@ -29,15 +28,6 @@ define("VERBOSE", FALSE);
 
 // Define the version of this script.
 define('ACQUIA_SEARCH_PROXY_VERSION', "1.0");
-
-$default_settings = array(
-  'node_access' => TRUE,
-  'allowed_ip' => array(
-    '127.0.0.1',
-  ),
-  'host' => 'search.acquia.com',
-  'derived_key_salt' => '',
-);
 
 $settings = array();
 
@@ -50,14 +40,15 @@ $dirname = dirname($_SERVER['SCRIPT_FILENAME']);
  */
 include $dirname . '/settings-search-proxy.php';
 
-// Merge in defaults.
-$settings = $settings + $default_settings;
+$req_path = empty($_SERVER['PATH_INFO']) ? '/' : $_SERVER['PATH_INFO'];
+set_environment($req_path);
 
-if (isset($_SERVER['REMOTE_ADDR']) && !in_array($_SERVER['REMOTE_ADDR'], $settings['allowed_ip'])) {
-  header('HTTP/1.0 403 Access Denied.');
-  echo 'Access Denied.' . "\n";
-  exit;
-}
+$settings = array(
+  'node_access' => $sdefaults[$env]['node_access'],
+  'host' => $sdefaults[$env]['host'],
+  'acquia_identifier' => $sdefaults[$env]['acquia_identifier'],
+  'derived_key' => $sdefaults[$env]['derived_key'],
+);
 
 if (empty($settings['acquia_identifier']) || (empty($settings['acquia_key']) && empty($settings['derived_key']))) {
   header('HTTP/1.0 403 Invalid credentials.');
@@ -179,6 +170,18 @@ function _acquia_search_hmac($key, $string) {
   return hash_hmac('sha1', $string, $key);
 }
 
+function set_environment(&$req_path) {
+  global $env;
+  if (strpos($req_path, '/stage/') !== FALSE) {
+    $req_path = str_replace('/stage', '', $req_path);
+    $env = 'stage';
+  }
+  elseif (strpos($req_path, '/prod/') !== FALSE) {
+    $req_path = str_replace('/prod', '', $req_path);
+    $env = 'prod';
+  }
+}
+
 function add_request_id(&$url) {
   $id = uniqid();
   if (!stristr($url,'?')) {
@@ -221,7 +224,7 @@ function acquia_agent_check_subscription($params = array()) {
     }
   }
   return $subscription;
-} 
+}
 
 /**
  * Derive a key for the solr hmac using the information shared with acquia.com.
@@ -442,7 +445,6 @@ if ($settings['node_access']) {
   $req_query .= $req_query ? '&' : '?';
   $req_query .= 'fq=nodeaccess_all:0';
 }
-$req_path = empty($_SERVER['PATH_INFO']) ? '/' : $_SERVER['PATH_INFO'];
 
 // TODO - better ping handling.
 $ping = strpos($req_path, '/admin/ping') === 0;
@@ -503,4 +505,3 @@ if (VERBOSE) {
 }
 
 echo $result->data;
-
