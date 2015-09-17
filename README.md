@@ -11,25 +11,25 @@ Configuration
 Update default settings in settings-search-proxy.php.  Fill in the acquia_identifier and derived_key to allow searching.
 If these settings are omitted or incorrect you will get Access Denied 403 errors.
 
-// Optionally set to 'stage' or 'prod'.  This is a fallback default if not defined in URL and is used for CLI.
-$env = 'prod';
-
-$sdefaults = array(
-  'prod' => array(
-    'acquia_identifier' => 'GTWX-10000', // The Acquia account identifier. e.g. GTWX-10000
-    'derived_key' => 'some_hash_generated', // The derived_key is NOT your Acquia key and needs to be generated using the drush line below.
-    'host' => 'search.acquia.com', // The host that Acquia solr is located.  This could be the same for both environments (can be found using drush line below).
-    'node_access' => TRUE, // Add filter for only content available to anonymous users.
-  ),
-);
-
-/*
- * Please execute the following commands for you environment:
- *   [acquia_identifier] -- drush vget acquia_identifier
- *   [derived_key] -- drush php-eval 'echo _acquia_search_derived_key();'
- *   [host] -- drush solr-get-env-url
- *     - Set to domain name only! Example: http://[DOMAIN_NAME]/solr/GTWX-100000
- */
+    // Optionally set to 'stage' or 'prod'.  This is a fallback default if not defined in URL and is used for CLI.
+    $env = 'prod';
+    
+    $sdefaults = array(
+      'prod' => array(
+        'acquia_identifier' => 'GTWX-10000', // The Acquia account identifier. e.g. GTWX-10000
+        'derived_key' => 'some_hash_generated', // The derived_key is NOT your Acquia key and needs to be generated using the drush line below.
+        'host' => 'search.acquia.com', // The host that Acquia solr is located.  This could be the same for both environments (can be found using drush line below).
+        'node_access' => TRUE, // Add filter for only content available to anonymous users.
+      ),
+    );
+    
+    /*
+     * Please execute the following commands for you environment:
+     *   [acquia_identifier] -- drush vget acquia_identifier
+     *   [derived_key] -- drush php-eval 'echo _acquia_search_derived_key();'
+     *   [host] -- drush solr-get-env-url
+     *     - Set to domain name only! Example: http://[DOMAIN_NAME]/solr/GTWX-100000
+     */
 
 
 Usage
