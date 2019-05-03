@@ -23,11 +23,11 @@
  */
 
 // Development defines
-define("ACQUIA_DEVELOPMENT_NOSSL", TRUE);
+define("ACQUIA_DEVELOPMENT_NOSSL", FALSE);
 define("VERBOSE", FALSE);
 
 // Define the version of this script.
-define('ACQUIA_SEARCH_PROXY_VERSION', "1.0");
+define('ACQUIA_SEARCH_PROXY_VERSION', "1.1");
 
 $settings = array();
 
@@ -40,6 +40,10 @@ $dirname = dirname($_SERVER['SCRIPT_FILENAME']);
  */
 include $dirname . '/settings-search-proxy.php';
 
+if (empty($_SERVER['PATH_INFO']) && !empty($_SERVER['REQUEST_URI'])) {
+  $_SERVER['PATH_INFO'] = preg_replace(';(^' . preg_quote($_SERVER['PHP_SELF'], ';') . '|[&#?].*);', '', $_SERVER['REQUEST_URI']);
+}
+
 $req_path = empty($_SERVER['PATH_INFO']) ? '/' : $_SERVER['PATH_INFO'];
 set_environment($req_path);
 
@@ -47,10 +51,12 @@ $settings = array(
   'node_access' => $sdefaults[$env]['node_access'],
   'host' => $sdefaults[$env]['host'],
   'acquia_identifier' => $sdefaults[$env]['acquia_identifier'],
-  'derived_key' => $sdefaults[$env]['derived_key'],
+  'acquia_key' => $sdefaults[$env]['acquia_key'],
+  'derived_key_salt' => $sdefaults[$env]['derived_key_salt'],
 );
+$settings['derived_key'] = _acquia_search_derived_key();
 
-if (empty($settings['acquia_identifier']) || (empty($settings['acquia_key']) && empty($settings['derived_key']))) {
+if (empty($settings['acquia_identifier']) || empty($settings['acquia_key']) || empty($settings['derived_key'])) {
   header('HTTP/1.0 403 Invalid credentials.');
   echo 'Invalid credentials.' . "\n";
   exit;
@@ -85,7 +91,7 @@ function acquia_search_auth_cookie(&$url, $string = '', $derived_key = NULL) {
   $uri = parse_url($url);
 
   // Add a scheme - should always be https if available.
-  if (in_array('ssl', stream_get_transports(), TRUE) && !defined('ACQUIA_DEVELOPMENT_NOSSL')) {
+  if (in_array('ssl', stream_get_transports(), TRUE) && !constant('ACQUIA_DEVELOPMENT_NOSSL')) {
     $scheme = 'https://';
     $port = '';
   }
@@ -172,7 +178,11 @@ function _acquia_search_hmac($key, $string) {
 
 function set_environment(&$req_path) {
   global $env;
-  if (strpos($req_path, '/stage/') !== FALSE) {
+  if (strpos($req_path, '/dev/') !== FALSE) {
+    $req_path = str_replace('/dev', '', $req_path);
+    $env = 'dev';
+  }
+  elseif (strpos($req_path, '/stage/') !== FALSE) {
     $req_path = str_replace('/stage', '', $req_path);
     $env = 'stage';
   }
@@ -499,9 +509,11 @@ foreach ($result->raw_headers as $header) {
 }
 
 if (VERBOSE) {
+  echo "<pre>" . PHP_EOL;
   echo "URL ($method): " . $url . PHP_EOL;
   echo "Derived Key: " . $settings['derived_key'] . PHP_EOL;
   echo "Headers: " . print_r($request_headers, TRUE) . PHP_EOL;
+  echo "</pre>" . PHP_EOL;
 }
 
 echo $result->data;
